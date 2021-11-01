@@ -11,18 +11,33 @@ const port = process.env.port || 3000
 app.use(cors())
 
 app.get("/photos", async (req, res) => {
+  console.log("masuk")
   const albumId = req.query.albumId
-  // dicek apakah ada key photos di redis,
-  // kalo belom ada get axios
-  // kalo udah ada get dari redis
-  const { data } = await axios.get(
-    "http://jsonplaceholder.typicode.com/photos",
-    { params : { albumId }}
-  )
-  console.log("data", JSON.stringify(data))
-  redisClient.setex("photos", DEFAULT_EXPIRATION, JSON.stringify(data))
-  // getPhotosDariRedis()
-  res.json(data)
+  redisClient.get(`photos?albumId=${albumId}`, async (err, photos) => {
+    if (err) console.error(err)
+    if (photos !== null) {
+      console.log("dari redis")
+      return res.json(JSON.parse(photos))
+    } else {
+      console.log("cache belom ada. kita ambil dari axios")
+      const { data } = await axios.get(
+        "http://jsonplaceholder.typicode.com/photos",
+        { params : { albumId }}
+      )
+      redisClient.setex(`photos?albumId=${albumId}`, DEFAULT_EXPIRATION, JSON.stringify(data))
+      res.json(data)
+    }
+  })
+})
+
+app.post("photos", (req, res) => {
+  // update photos redis
+})
+
+app.put("photos/:id", (req, res) => {
+  // update photos redis
+  // updateDiDB()
+  // updateDiRedis
 })
 
 app.get("/photos/:id", async (req, res) => {
